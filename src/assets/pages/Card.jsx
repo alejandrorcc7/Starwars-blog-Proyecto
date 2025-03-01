@@ -1,113 +1,144 @@
-import React, { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import React, { useEffect, useState, useContext } from "react"; 
+// Importa React y los hooks useEffect, useState y useContext desde React.
 
-// Importar las imágenes de manera dinámica
-const images = import.meta.glob("/src/assets/img/*/*.{jpg,png}", { eager: true });
+import { useLocation, useNavigate } from "react-router-dom"; 
+// Importa useLocation y useNavigate desde react-router-dom para gestionar la ubicación y la navegación.
 
-const Card = () => {
-  const { state } = useLocation();
-  const { id, type } = state || {};
+import CardContext from "../context/CardContext"; 
+// Importa el contexto CardContext, que probablemente almacena los ítems en caché y funciones relacionadas.
+
+const images = import.meta.glob("/src/assets/img/*/*.{jpg,png}", { eager: true }); 
+// Importa las imágenes de manera dinámica usando Vite. Se cargan todas las imágenes jpg o png dentro de la carpeta /src/assets/img/.
+// "eager: true" indica que las imágenes se cargan inmediatamente, sin esperar a que se soliciten.
+
+const Card = () => { 
+  // Define el componente funcional Card.
+
+  const { state } = useLocation(); 
+  // Usa el hook useLocation para obtener el estado de la ubicación (generalmente de la ruta actual).
   
-  const [itemDetails, setItemDetails] = useState(null);
+  const navigate = useNavigate(); 
+  // Usa el hook useNavigate para obtener la función que permite navegar a otras rutas.
 
-  useEffect(() => {
-    const fetchItemDetails = async () => {
+  const { id, type } = state || {}; 
+  // Extrae las propiedades `id` y `type` del estado de la ruta, o asigna un objeto vacío si `state` es undefined.
+
+  const { cachedItems, cacheItem } = useContext(CardContext); 
+  // Usa useContext para acceder al contexto `CardContext`, que contiene la información de ítems en caché y la función para agregar un ítem al caché.
+
+  const [itemDetails, setItemDetails] = useState(cachedItems[`${type}-${id}`] || null); 
+  // Usa el hook useState para crear el estado `itemDetails`, que se inicializa con los detalles del ítem desde el caché si existen.
+  // Si no están en caché, se inicia como null.
+
+  useEffect(() => { 
+    // Usa useEffect para realizar efectos secundarios. Este efecto se ejecuta cuando `id`, `type`, `itemDetails`, o `cacheItem` cambian.
+
+    const fetchItemDetails = async () => { 
+      // Define una función asíncrona que obtiene los detalles del ítem.
+
+      if (itemDetails) return; // Si `itemDetails` ya tiene información, no realiza la petición para evitar duplicados.
+
       try {
-        const response = await fetch(`https://www.swapi.tech/api/${type}/${id}`);
-        if (response.ok) {
-          const data = await response.json();
-          const details = {
-            ...data.result.properties,
-            description: data.result.description,
-          };
-          setItemDetails(details);
+        const response = await fetch(`https://www.swapi.tech/api/${type}/${id}`); 
+        // Hace una solicitud a la API de Star Wars usando el `type` y `id` del ítem.
+
+        if (response.ok) { 
+          // Si la respuesta es exitosa (status 200-299),
+          const data = await response.json(); 
+          // Convierte la respuesta a JSON.
+
+          const details = data.result.properties; 
+          // Extrae las propiedades del ítem desde la respuesta.
+
+          setItemDetails(details); 
+          // Actualiza el estado `itemDetails` con los detalles obtenidos.
+
+          cacheItem(`${type}-${id}`, details); 
+          // Guarda los detalles del ítem en el caché usando la función `cacheItem`.
         } else {
-          console.error("Failed to fetch data:", response.status);
+          console.error("Failed to fetch data:", response.status); 
+          // Si la respuesta no es exitosa, muestra un error en la consola.
         }
       } catch (error) {
-        console.error("Error fetching item details:", error);
+        console.error("Error fetching item details:", error); 
+        // Si ocurre un error en la solicitud, lo captura y lo muestra en la consola.
       }
     };
 
-    if (id && type) {
-      fetchItemDetails();
-    }
-  }, [id, type]);
+    fetchItemDetails(); 
+    // Llama a la función `fetchItemDetails` para obtener los detalles del ítem cuando el efecto se ejecute.
 
-  if (!itemDetails) {
-    return <div class="text-center m-5">
-    <div class="spinner-border" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-  </div>
+  }, [id, type, itemDetails, cacheItem]); 
+  // El efecto se ejecuta cada vez que cambian los valores de `id`, `type`, `itemDetails` o `cacheItem`.
+
+  if (!itemDetails) { 
+    // Si `itemDetails` es null o undefined (aún cargando o no encontrado),
+    return (
+      <div className="text-center m-5">
+        <div className="spinner-border" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+    // Muestra un spinner de carga hasta que los detalles estén disponibles.
   }
 
-  // Obtener la imagen correcta
-  const imagePath = `/src/assets/img/${type}/${id}.jpg`;
-  const foundImage = images[imagePath];
-  const imageURL = foundImage ? foundImage.default : "/img/default.jpg";
+  const imagePath = `/src/assets/img/${type}/${id}.jpg`; 
+  // Construye la ruta de la imagen usando `type` e `id`.
 
-  return (
-    <div className="container d-flex justify-content-center">
-      <div className="card mb-3 mt-3 p-3" style={{ maxWidth: "900px", width: "900px" }}>
-        <div className="row g-0">
-          {/* Imagen a la izquierda */}
-          <div className="col-md-4 d-flex justify-content-center">
-            <img 
-              src={imageURL} 
-              className="card-img-top p-3" 
-              alt={itemDetails.name} 
-              onError={(e) => e.target.src = "/img/default.jpg"}
-              style={{ width: "100%", maxWidth: "300px", objectFit: "cover" }} 
-            />
-          </div>
+  const foundImage = images[imagePath]; 
+  // Intenta encontrar la imagen en las importaciones dinámicas de imágenes.
 
-          {/* Nombre arriba y descripción debajo, alineado con la imagen */}
-          <div className="col-md-8 d-flex flex-column justify-content-start ">
-            <h5 className="card-title text-center">{itemDetails.name}</h5>
-            <p className="mt-2"><strong>Description:</strong> {itemDetails.description || "No description available"}</p>
-          </div>
+  const imageURL = foundImage ? foundImage.default : "/img/default.jpg"; 
+  // Si se encuentra la imagen, usa su URL. Si no, usa una imagen predeterminada.
+
+  return ( 
+    <div className="container d-flex justify-content-center mt-4">
+      {/* Contenedor principal que alinea el contenido en el centro y da un margen superior. */}
+      
+      <div className="card p-3 shadow-lg" style={{ maxWidth: "600px", width: "100%" }}>
+        {/* Crea una tarjeta con un relleno de 3, sombra y un tamaño máximo de 600px. */}
+        
+        <button 
+          className="btn btn-danger btn-sm align-self-end" 
+          onClick={() => navigate("/")}
+        >
+          ❌ Cerrar
+        </button>
+        {/* Botón para navegar a la ruta principal ("/") al hacer clic. */}
+        
+        <img 
+          src={imageURL} 
+          className="card-img-top p-3" 
+          alt={itemDetails.name} 
+          onError={(e) => (e.target.src = "/img/default.jpg")} 
+          // Si hay un error al cargar la imagen, se reemplaza por la imagen predeterminada.
+          style={{ width: "300px", height: "300px", objectFit: "cover", alignSelf: "center" }} 
+        />
+        {/* Muestra la imagen del ítem con un tamaño de 300x300px y ajuste de contenido. */}
+        
+        <div className="card-body text-center">
+          <h5 className="card-title">{itemDetails.name}</h5>
+          {/* Muestra el nombre del ítem en el título de la tarjeta. */}
         </div>
-
-        {/* Datos organizados en UNA SOLA FILA */}
-        <div className="container mt-3">
-          <div className="row text-center d-flex justify-content-center">
-            {type === "people" && (
-              <>
-                <div className="col"><strong>Height</strong><br />{itemDetails.height} cm</div>
-                <div className="col"><strong>Mass</strong><br />{itemDetails.mass} kg</div>
-                <div className="col"><strong>Hair Color</strong><br />{itemDetails.hair_color}</div>
-                <div className="col"><strong>Skin Color</strong><br />{itemDetails.skin_color}</div>
-                <div className="col"><strong>Eye Color</strong><br />{itemDetails.eye_color}</div>
-                <div className="col"><strong>Birth Year</strong><br />{itemDetails.birth_year}</div>
-                <div className="col"><strong>Gender</strong><br />{itemDetails.gender}</div>
-              </>
-            )}
-            {type === "planets" && (
-              <>
-                <div className="col"><strong>Climate</strong><br />{itemDetails.climate}</div>
-                <div className="col"><strong>Diameter</strong><br />{itemDetails.diameter} km</div>
-                <div className="col"><strong>Gravity</strong><br />{itemDetails.gravity}</div>
-                <div className="col"><strong>Population</strong><br />{itemDetails.population}</div>
-                <div className="col"><strong>Terrain</strong><br />{itemDetails.terrain}</div>
-              </>
-            )}
-            {type === "vehicles" && (
-              <>
-                <div className="col"><strong>Model</strong><br />{itemDetails.model}</div>
-                <div className="col"><strong>Manufacturer</strong><br />{itemDetails.manufacturer}</div>
-                <div className="col"><strong>Cost</strong><br />{itemDetails.cost_in_credits}</div>
-                <div className="col"><strong>Length</strong><br />{itemDetails.length} meters</div>
-                <div className="col"><strong>Max Speed</strong><br />{itemDetails.max_atmosphering_speed} km/h</div>
-                <div className="col"><strong>Crew</strong><br />{itemDetails.crew}</div>
-                <div className="col"><strong>Passengers</strong><br />{itemDetails.passengers}</div>
-              </>
-            )}
-          </div>
+        
+        <div className="list-group list-group-flush">
+          {/* Lista de detalles del ítem */}
+          {Object.entries(itemDetails).map(([key, value]) => (
+            // Recorre las propiedades de `itemDetails` y las muestra en una lista.
+            !["created", "edited", "homeworld", "url", "description"].includes(key) && (
+              // Excluye ciertas claves como `created`, `edited`, `homeworld`, `url`, y `description` de la lista.
+              <div key={key} className="list-group-item d-flex justify-content-between">
+                <strong>{key.replace("_", " ").toUpperCase()}:</strong>
+                <span>{value}</span>
+              </div>
+            )
+          ))}
         </div>
       </div>
     </div>
   );
 };
 
-export default Card;
+export default Card; 
+// Exporta el componente `Card` como el componente principal de este archivo.
