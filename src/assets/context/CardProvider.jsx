@@ -4,7 +4,7 @@ import CardContext from './CardContext'; // Importa el contexto de tarjetas
 const CardProvider = ({ children }) => {
   const [card, setCard] = useState([]); // Estado para almacenar las tarjetas favoritas
   const [cachedItems, setCachedItems] = useState({}); // Estado para almacenar datos en caché
-  const [data, setData] = useState({ people: [], planets: [], vehicles: [] }); // Estado para almacenar los datos de la API
+  const [data, setData] = useState({ planets: [],people: [], vehicles: [] }); // Estado para almacenar los datos de la API
   const endpoints = ["people", "planets", "vehicles"]; // Define los tipos de datos a obtener
 
   useEffect(() => {

@@ -8,7 +8,7 @@ const images = import.meta.glob("/src/assets/img/*/*.{jpg,png}", { eager: true }
 const Home = () => {
   const { addCard, removeCard, card, data } = useContext(CardContext); // Usa el contexto de tarjetas
   const navigate = useNavigate(); // Inicializa la función de navegación
-  const endpoints = ["people", "planets", "vehicles"]; // Define categorías
+  const endpoints = [ "planets", "people",  "vehicles"]; // Define categorías
 
   // Función para alternar "like" en una tarjeta
   const toggleLike = (id, type, name) => {
